@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: ora2pg-web
+
+  datasource:
+    url: jdbc:sqlite:ora2pg-web.db
+    driver-class-name: org.sqlite.JDBC
+    username:
+    password:
+
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+app:
+  security:
+    secret-key: "a3dce23812d5998658bcb13ba8403422"
