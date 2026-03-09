@@ -7,37 +7,38 @@ import java.time.LocalDateTime
 @Entity
 @Table(name = "projects")
 data class Project(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    val id: Long = 0,
+    var name: String = "",
 
-    @Column(nullable = false)
-    var name: String,
-
-    // --- Oracle Source ---
+    // --- Oracle Basic ---
     var oracleHost: String = "localhost",
     var oraclePort: Int = 1521,
-    var oracleSid: String = "ORCLCDB",
-    var oracleUser: String = "system",
+    var oracleSid: String = "XE",
+    var oracleUser: String = "",
 
-    @Convert(converter = AttributeEncryptor::class) // <--- Encrypted!
+    @Convert(converter = AttributeEncryptor::class)
     @Column(name = "oracle_password")
     var oraclePassword: String = "",
 
-    // --- Postgres Destination ---
+    // --- Oracle Advanced ---
+    var oracleConnectionType: String = "SID", // Can be "SID", "SERVICE_NAME", or "CUSTOM"
+    var oracleCustomDsn: String? = "", // For completely custom connection strings
+
+    // --- Postgres Basic ---
     var postgresHost: String = "localhost",
     var postgresPort: Int = 5432,
     var postgresDb: String = "postgres",
-    var postgresUser: String = "postgres",
+    var postgresUser: String = "",
 
     @Convert(converter = AttributeEncryptor::class) // <--- Encrypted!
     @Column(name = "postgres_password")
     var postgresPassword: String = "",
 
-    // --- Metadata ---
-    var createdAt: LocalDateTime = LocalDateTime.now(),
+    // --- Postgres Advanced ---
+    var postgresSslMode: String = "disable", // "disable", "require", "verify-ca", etc.
+    var postgresSearchPath: String? = "", // Specific schemas to target
 
-    // For storing custom Ora2Pg configuration directives (e.g. TYPE TABLE, COPY, etc.)
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 2000)
     var ora2pgConfig: String = ""
 )

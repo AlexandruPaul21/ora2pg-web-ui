@@ -33,11 +33,11 @@ class ProjectController(
 
     @PostMapping("/test-oracle")
     fun testOracleConnection(@RequestBody project: Project): ConnectionResult {
-        return connectionService.testOracle(project)
+        return connectionService.testOracleConnection(project)
     }
 
     @PostMapping("/test-postgres")
     fun testPostgresConnection(@RequestBody project: Project): ConnectionResult {
-        return connectionService.testPostgres(project)
+        return connectionService.testPostgresConnection(project)
     }
 }

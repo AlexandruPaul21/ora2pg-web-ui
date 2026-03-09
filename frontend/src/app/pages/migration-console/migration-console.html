@@ -1,0 +1,21 @@
+<div class="card p-4">
+  <div class="flex justify-content-between mb-3">
+    <h2>Migration Console (Project #{{projectId}})</h2>
+    <p-button
+      label="Start Migration"
+      icon="pi pi-play"
+      (onClick)="startMigration()"
+      [disabled]="isRunning">
+    </p-button>
+  </div>
+
+  <div class="mb-3" *ngIf="isRunning || progress > 0">
+    <div class="text-primary font-bold mb-2">{{ currentStep }}</div>
+    <p-progressBar [value]="progress"></p-progressBar>
+  </div>
+
+  <div class="terminal shadow-4">
+    <div *ngFor="let line of logs">{{ line }}</div>
+    <div *ngIf="isRunning" class="blink">_</div>
+  </div>
+</div>
