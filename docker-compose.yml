@@ -29,6 +29,8 @@ services:
       - APP_USER_PASSWORD=testuser123
     ports:
       - "8000:1521"
+    volumes:
+      - ./docker-libs/init-oracle.sh:/container-entrypoint-startdb.d/init-oracle.sh
     networks:
       - migration-net
     healthcheck:

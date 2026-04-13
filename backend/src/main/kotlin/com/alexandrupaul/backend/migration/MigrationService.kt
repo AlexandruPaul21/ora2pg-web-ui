@@ -19,31 +19,34 @@ class MigrationService(
 ) {
 
     private val executor = Executors.newCachedThreadPool()
-    private val baseWorkDir = Paths.get("/data/projects") // Matches our Docker volume
+    private val baseWorkDir = Paths.get("/data/projects") // Matches docker volume
 
     fun runMigration(projectId: Long): SseEmitter {
         val emitter = SseEmitter(Long.MAX_VALUE)
         val project = projectRepository.findById(projectId).orElseThrow()
 
-        // 1. Create the Run Record
         var run = MigrationRun(projectId = projectId)
         run = migrationRunRepository.save(run)
 
-        // 2. Define the log file path
         if (!Files.exists(baseWorkDir)) Files.createDirectories(baseWorkDir)
         val logFile = baseWorkDir.resolve("run_${run.id}.log")
         run.logFileName = logFile.fileName.toString()
         migrationRunRepository.save(run)
 
         executor.submit {
-            // 3. Open a file writer. Everything inside this block gets saved!
             logFile.toFile().printWriter().use { fileWriter ->
+                var emitterClosed = false
 
-                // Helper function to send to UI AND save to file simultaneously
                 fun logLine(line: String) {
                     fileWriter.println(line)
-                    fileWriter.flush() // Ensure it writes to disk immediately
-                    emitter.send(SseEmitter.event().name("log").data(line))
+                    fileWriter.flush()
+                    if (!emitterClosed) {
+                        try {
+                            emitter.send(SseEmitter.event().name("log").data(line))
+                        } catch (_: Exception) {
+                            emitterClosed = true
+                        }
+                    }
                 }
 
                 try {
@@ -95,13 +98,13 @@ class MigrationService(
                     }
 
                 } catch (e: Exception) {
-                    logLine("Internal Error: ${e.message}")
+                    fileWriter.println("Internal Error: ${e.message}")
+                    fileWriter.flush()
                     run.status = "FAILED"
                 } finally {
-                    // 4. Mark the run as finished in the DB
                     run.endTime = java.time.LocalDateTime.now()
                     migrationRunRepository.save(run)
-                    emitter.complete()
+                    try { emitter.complete() } catch (_: Exception) {}
                 }
             }
         }
@@ -111,12 +114,11 @@ class MigrationService(
     fun generateAssessmentReport(projectId: Long): String {
         val project = projectRepository.findById(projectId).orElseThrow()
         if (!Files.exists(baseWorkDir)) Files.createDirectories(baseWorkDir)
-        val configFile = configGenerator.createConfig(project, baseWorkDir)
+        val configFile = configGenerator.createConfig(project, baseWorkDir, includeTableFilter = false)
 
         val reportFile = baseWorkDir.resolve("report_${project.id}.html")
         val errorFile = baseWorkDir.resolve("report_error_${project.id}.log")
 
-        // Command to generate the HTML report
         val processBuilder = ProcessBuilder(
             "ora2pg",
             "-c", configFile.toAbsolutePath().toString(),
@@ -124,9 +126,7 @@ class MigrationService(
             "--dump_as_html"
         )
 
-        // We redirect standard output directly into our HTML file
         processBuilder.redirectOutput(reportFile.toFile())
-        // We redirect errors to a separate file so they don't corrupt the HTML
         processBuilder.redirectError(errorFile.toFile())
 
         val process = processBuilder.start()

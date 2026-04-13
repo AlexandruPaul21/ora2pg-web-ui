@@ -7,13 +7,14 @@ import java.sql.DriverManager
 @Service
 class ConnectionService {
 
+    private fun buildOracleJdbcUrl(project: Project): String = when (project.oracleConnectionType) {
+        "SERVICE_NAME" -> "jdbc:oracle:thin:@//${project.oracleHost}:${project.oraclePort}/${project.oracleSid}"
+        "CUSTOM" -> project.oracleCustomDsn ?: ""
+        else -> "jdbc:oracle:thin:@${project.oracleHost}:${project.oraclePort}:${project.oracleSid}"
+    }
+
     fun testOracleConnection(project: Project): ConnectionResult {
-        // Build the correct JDBC URL based on the connection type
-        val url = when (project.oracleConnectionType) {
-            "SERVICE_NAME" -> "jdbc:oracle:thin:@//${project.oracleHost}:${project.oraclePort}/${project.oracleSid}"
-            "CUSTOM" -> project.oracleCustomDsn ?: "" // Use custom DSN if provided
-            else -> "jdbc:oracle:thin:@${project.oracleHost}:${project.oraclePort}:${project.oracleSid}" // Default SID
-        }
+        val url = buildOracleJdbcUrl(project)
 
         return try {
             DriverManager.getConnection(url, project.oracleUser, project.oraclePassword).use { connection ->
@@ -49,5 +50,21 @@ class ConnectionService {
         } catch (e: Exception) {
             ConnectionResult(false, "Postgres Error: ${e.message}")
         }
+    }
+
+    fun fetchOracleTables(project: Project): List<String> {
+        val url = buildOracleJdbcUrl(project)
+        val tables = mutableListOf<String>()
+        DriverManager.getConnection(url, project.oracleUser, project.oraclePassword).use { conn ->
+            conn.prepareStatement("SELECT table_name FROM all_tables WHERE owner = UPPER(?) ORDER BY table_name").use { stmt ->
+                stmt.setString(1, project.oracleUser)
+                stmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        tables.add(rs.getString("table_name"))
+                    }
+                }
+            }
+        }
+        return tables
     }
 }

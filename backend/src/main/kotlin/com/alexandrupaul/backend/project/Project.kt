@@ -2,7 +2,6 @@ package com.alexandrupaul.backend.project
 
 import com.alexandrupaul.backend.security.AttributeEncryptor
 import jakarta.persistence.*
-import java.time.LocalDateTime
 
 @Entity
 @Table(name = "projects")
@@ -38,6 +37,11 @@ data class Project(
     // --- Postgres Advanced ---
     var postgresSslMode: String = "disable", // "disable", "require", "verify-ca", etc.
     var postgresSearchPath: String? = "", // Specific schemas to target
+
+    // --- Table Scope ---
+    var tableFilterMode: String? = "", // "ALLOW", "EXCLUDE", or "" (no filter)
+    @Column(length = 4000)
+    var selectedTables: String = "",
 
     @Column(length = 2000)
     var ora2pgConfig: String = ""

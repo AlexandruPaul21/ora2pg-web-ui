@@ -19,6 +19,8 @@ import {Select} from 'primeng/select';
 import {InputGroup} from 'primeng/inputgroup';
 import {DomSanitizer, SafeHtml} from '@angular/platform-browser';
 import {Tag} from 'primeng/tag';
+import {MultiSelect} from 'primeng/multiselect';
+import {SelectButton} from 'primeng/selectbutton';
 
 @Component({
   selector: 'app-dashboard',
@@ -41,6 +43,8 @@ import {Tag} from 'primeng/tag';
     Select,
     InputGroup,
     Tag,
+    MultiSelect,
+    SelectButton,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './dashboard.html',
@@ -75,6 +79,14 @@ export class DashboardComponent implements OnInit {
   displayLogDialog: boolean = false;
   historyRuns: any[] = [];
   selectedLogs: string = '';
+
+  availableTables: {label: string, value: string}[] = [];
+  selectedTablesList: string[] = [];
+  isFetchingTables = false;
+  tableFilterModes = [
+    {label: 'Allow (whitelist)', value: 'ALLOW'},
+    {label: 'Exclude (blacklist)', value: 'EXCLUDE'}
+  ];
 
   newProject: Project = this.getEmptyProject();
 
@@ -135,14 +147,19 @@ export class DashboardComponent implements OnInit {
 
   openNew() {
     this.newProject = this.getEmptyProject();
-    this.isEditing = false; // We are creating, not editing
+    this.isEditing = false;
+    this.availableTables = [];
+    this.selectedTablesList = [];
     this.displayDialog = true;
   }
 
   editProject(project: Project) {
-    // Create a copy to avoid modifying the table row directly before saving
     this.newProject = { ...project };
-    this.isEditing = true; // We are Editing
+    this.isEditing = true;
+    this.selectedTablesList = project.selectedTables
+        ? project.selectedTables.split(' ').filter(t => t.length > 0)
+        : [];
+    this.availableTables = this.selectedTablesList.map(t => ({label: t, value: t}));
     this.displayDialog = true;
   }
 
@@ -168,6 +185,8 @@ export class DashboardComponent implements OnInit {
   }
 
   saveProject() {
+    this.newProject.selectedTables = this.selectedTablesList.join(' ');
+
     if (this.isEditing && this.newProject.id) {
       // Update existing project
       this.projectService.updateProject(this.newProject.id, this.newProject).subscribe({
@@ -204,10 +223,10 @@ export class DashboardComponent implements OnInit {
       name: '',
       oracleHost: 'localhost',
       oraclePort: 1521,
-      oracleSid: 'XE',
+      oracleSid: 'XEPDB1',
       oracleUser: '',
       oraclePassword: '',
-      oracleConnectionType: 'SID',
+      oracleConnectionType: 'SERVICE_NAME',
       oracleCustomDsn: '',
       postgresHost: 'localhost',
       postgresPort: 5432,
@@ -216,6 +235,8 @@ export class DashboardComponent implements OnInit {
       postgresPassword: '',
       postgresSslMode: 'disable',
       postgresSearchPath: '',
+      tableFilterMode: '',
+      selectedTables: '',
       ora2pgConfig: ''
     };
   }
@@ -247,6 +268,21 @@ export class DashboardComponent implements OnInit {
       },
       error: (err) => {
         this.messageService.add({severity:'error', summary:'System Error', detail: 'Could not reach server'});
+      }
+    });
+  }
+
+  fetchTables() {
+    this.isFetchingTables = true;
+    this.projectService.fetchOracleTables(this.newProject).subscribe({
+      next: (tables) => {
+        this.availableTables = tables.map(t => ({label: t, value: t}));
+        this.isFetchingTables = false;
+        this.messageService.add({severity:'success', summary:'Tables Loaded', detail: `Found ${tables.length} tables`});
+      },
+      error: () => {
+        this.isFetchingTables = false;
+        this.messageService.add({severity:'error', summary:'Fetch Failed', detail: 'Could not retrieve Oracle tables. Check connection details.'});
       }
     });
   }

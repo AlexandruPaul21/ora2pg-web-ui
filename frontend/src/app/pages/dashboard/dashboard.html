@@ -53,7 +53,7 @@
   </p-table>
 </div>
 
-<p-dialog header="New Project Details" [(visible)]="displayDialog" [style]="{width: '500px'}" [modal]="true">
+<p-dialog header="New Project Details" [(visible)]="displayDialog" [style]="{width: '650px'}" [modal]="true">
   <div class="flex flex-column gap-4 p-fluid p-2">
 
     <div class="flex flex-column gap-2">
@@ -162,6 +162,55 @@
         </div>
       </p-fieldset>
     </div>
+
+    <p-fieldset legend="Table Scope" [toggleable]="true" [collapsed]="true">
+      <div class="flex flex-column gap-3 mt-2">
+        <div class="flex align-items-center gap-2">
+          <p-button
+            label="Fetch Tables"
+            icon="pi pi-download"
+            (onClick)="fetchTables()"
+            [loading]="isFetchingTables"
+            styleClass="p-button-outlined">
+          </p-button>
+          <span class="text-color-secondary text-sm" *ngIf="availableTables.length > 0">
+            {{ availableTables.length }} tables found
+          </span>
+        </div>
+
+        <div class="flex flex-column gap-2" *ngIf="availableTables.length > 0">
+          <label class="font-medium">Filter Mode</label>
+          <p-selectButton
+            [options]="tableFilterModes"
+            [(ngModel)]="newProject.tableFilterMode"
+            optionLabel="label"
+            optionValue="value">
+          </p-selectButton>
+        </div>
+
+        <div class="flex flex-column gap-2"
+             *ngIf="availableTables.length > 0 && newProject.tableFilterMode">
+          <label class="font-medium">
+            {{ newProject.tableFilterMode === 'ALLOW' ? 'Tables to Migrate' : 'Tables to Skip' }}
+          </label>
+          <p-multiselect
+            [options]="availableTables"
+            [(ngModel)]="selectedTablesList"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Select tables..."
+            [filter]="true"
+            filterPlaceHolder="Search tables..."
+            [showToggleAll]="true"
+            display="chip"
+            appendTo="body"
+            styleClass="w-full"
+            [maxSelectedLabels]="5"
+            selectedItemsLabel="{0} tables selected">
+          </p-multiselect>
+        </div>
+      </div>
+    </p-fieldset>
 
     <div class="flex flex-column gap-2 mb-4">
       <label for="config" class="font-semibold text-lg">Ora2Pg Configuration (Advanced)</label>

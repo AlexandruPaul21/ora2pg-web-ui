@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/projects")
-@CrossOrigin(origins = ["http://localhost:4200"]) // Allow Angular dev server
+@CrossOrigin(origins = ["http://localhost:4200"])
 class ProjectController(
     private val repository: ProjectRepository,
     private val connectionService: ConnectionService,
@@ -39,5 +39,10 @@ class ProjectController(
     @PostMapping("/test-postgres")
     fun testPostgresConnection(@RequestBody project: Project): ConnectionResult {
         return connectionService.testPostgresConnection(project)
+    }
+
+    @PostMapping("/fetch-oracle-tables")
+    fun fetchOracleTables(@RequestBody project: Project): List<String> {
+        return connectionService.fetchOracleTables(project)
     }
 }

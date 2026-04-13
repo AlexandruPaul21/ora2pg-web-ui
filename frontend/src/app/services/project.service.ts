@@ -25,6 +25,9 @@ export interface Project {
   postgresSslMode: string;
   postgresSearchPath?: string;
 
+  tableFilterMode: string;
+  selectedTables: string;
+
   ora2pgConfig: string;
 }
 
@@ -57,6 +60,10 @@ export class ProjectService {
 
   testPostgres(project: Project): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/test-postgres`, project);
+  }
+
+  fetchOracleTables(project: Project): Observable<string[]> {
+    return this.http.post<string[]>(`${this.apiUrl}/fetch-oracle-tables`, project);
   }
 
   getAssessmentReport(id: number): Observable<string> {
