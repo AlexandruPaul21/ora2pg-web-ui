@@ -10,6 +10,7 @@ import java.io.InputStreamReader
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.concurrent.Executors
+import java.util.stream.Collectors
 
 @Service
 class MigrationService(
@@ -52,49 +53,81 @@ class MigrationService(
                 try {
                     val configFile = configGenerator.createConfig(project, baseWorkDir)
 
-                    // >>> STEP 1: Schema Extraction
+                    fun runOra2pg(type: String, extraArgs: List<String> = emptyList()): Int {
+                        val cmd = mutableListOf("ora2pg", "-c", configFile.toAbsolutePath().toString(), "-t", type)
+                        cmd.addAll(extraArgs)
+                        val p = ProcessBuilder(cmd).redirectErrorStream(true).start()
+                        BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
+                            var line: String?
+                            while (reader.readLine().also { line = it } != null) logLine(line!!)
+                        }
+                        return p.waitFor()
+                    }
+
+                    fun runPsql(sqlFile: java.nio.file.Path): Boolean {
+                        val cmd = listOf("psql", "-h", project.postgresHost, "-p", project.postgresPort.toString(), "-U", project.postgresUser, "-d", project.postgresDb, "-f", sqlFile.toAbsolutePath().toString())
+                        val pb = ProcessBuilder(cmd)
+                        pb.environment()["PGPASSWORD"] = project.postgresPassword
+                        pb.redirectErrorStream(true)
+                        val p = pb.start()
+                        var sawError = false
+                        BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
+                            var line: String?
+                            while (reader.readLine().also { line = it } != null) {
+                                logLine(line!!)
+                                if (line.contains("ERROR:")) sawError = true
+                            }
+                        }
+                        p.waitFor()
+                        return sawError
+                    }
+
+                    var hasErrors = false
+
+                    // >>> STEP 1: Schema Extraction (tables + sequences)
                     logLine("\n>>> STEP 1: Extracting Schema from Oracle...")
                     val schemaFileName = "schema_${project.id}.sql"
-                    val p1 = ProcessBuilder("ora2pg", "-c", configFile.toAbsolutePath().toString(), "-t", "TABLE", "-o", schemaFileName, "-b", baseWorkDir.toString())
-                        .redirectErrorStream(true).start()
+                    val sequenceFileName = "sequence_${project.id}.sql"
+                    runOra2pg("TABLE", listOf("-o", schemaFileName, "-b", baseWorkDir.toString()))
+                    runOra2pg("SEQUENCE", listOf("-o", sequenceFileName, "-b", baseWorkDir.toString()))
 
-                    BufferedReader(InputStreamReader(p1.inputStream)).use { reader ->
-                        var line: String?
-                        while (reader.readLine().also { line = it } != null) logLine(line!!)
-                    }
-                    p1.waitFor()
-
-                    // >>> STEP 2: Apply to Postgres
+                    // >>> STEP 2: Apply Schema to Postgres (psql continues past errors so independent tables survive)
                     logLine("\n>>> STEP 2: Creating Tables in PostgreSQL...")
                     val schemaFile = baseWorkDir.resolve(schemaFileName)
-                    val p2Builder = ProcessBuilder("psql", "-h", project.postgresHost, "-p", project.postgresPort.toString(), "-U", project.postgresUser, "-d", project.postgresDb, "-f", schemaFile.toAbsolutePath().toString())
-                    p2Builder.environment()["PGPASSWORD"] = project.postgresPassword
-                    p2Builder.redirectErrorStream(true)
-                    val p2 = p2Builder.start()
+                    if (runPsql(schemaFile)) hasErrors = true
 
-                    BufferedReader(InputStreamReader(p2.inputStream)).use { reader ->
-                        var line: String?
-                        while (reader.readLine().also { line = it } != null) logLine(line!!)
+                    val sequenceFile = baseWorkDir.resolve(sequenceFileName)
+                    if (Files.exists(sequenceFile) && Files.size(sequenceFile) > 0) {
+                        logLine("Applying sequences...")
+                        if (runPsql(sequenceFile)) hasErrors = true
                     }
-                    p2.waitFor()
 
                     // >>> STEP 3: Migrate Data
                     logLine("\n>>> STEP 3: Migrating Data...")
-                    val p3 = ProcessBuilder("ora2pg", "-c", configFile.toAbsolutePath().toString(), "-t", "COPY")
-                        .redirectErrorStream(true).start()
+                    val dataExitCode = runOra2pg("COPY")
 
-                    BufferedReader(InputStreamReader(p3.inputStream)).use { reader ->
-                        var line: String?
-                        while (reader.readLine().also { line = it } != null) logLine(line!!)
+                    // >>> STEP 4: Apply Foreign Key Constraints
+                    val fkeyFiles = Files.list(baseWorkDir)
+                        .filter { val name = it.fileName.toString(); name.startsWith("CONSTRAINTS_") && name.endsWith(".sql") && name.contains("${project.id}") }
+                        .collect(Collectors.toList())
+
+                    if (fkeyFiles.isNotEmpty()) {
+                        logLine("\n>>> STEP 4: Applying Foreign Key Constraints...")
+                        for (fkeyFile in fkeyFiles) {
+                            logLine("Applying ${fkeyFile.fileName}...")
+                            if (runPsql(fkeyFile)) hasErrors = true
+                        }
                     }
-                    val exitCode = p3.waitFor()
 
-                    if (exitCode == 0) {
+                    if (dataExitCode != 0) {
+                        logLine("Migration Failed with exit code: $dataExitCode")
+                        run.status = "FAILED"
+                    } else if (hasErrors) {
+                        logLine("Migration completed with some errors (check logs above).")
+                        run.status = "SUCCESS_WITH_WARNING"
+                    } else {
                         logLine("Migration Finished Successfully!")
                         run.status = "SUCCESS"
-                    } else {
-                        logLine("Migration Failed with exit code: $exitCode")
-                        run.status = "FAILED"
                     }
 
                 } catch (e: Exception) {

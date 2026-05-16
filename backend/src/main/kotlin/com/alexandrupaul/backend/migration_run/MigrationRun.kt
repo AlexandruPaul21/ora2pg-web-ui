@@ -14,6 +14,6 @@ data class MigrationRun(
     val startTime: LocalDateTime = LocalDateTime.now(),
     var endTime: LocalDateTime? = null,
 
-    var status: String = "RUNNING", // RUNNING, SUCCESS, FAILED
+    var status: String = "RUNNING", // RUNNING, SUCCESS, SUCCESS_WITH_WARNING, FAILED
     var logFileName: String = ""
 )

@@ -1,0 +1,175 @@
+<div class="card p-4">
+  <div class="flex justify-content-between align-items-center mb-4">
+    <h2 class="m-0">Validation Console (Project #{{projectId}})</h2>
+    <p-button label="Back to Dashboard" icon="pi pi-arrow-left" routerLink="/" styleClass="p-button-text"></p-button>
+  </div>
+
+  <!-- Progress -->
+  <div class="mb-3" *ngIf="isRunning || progress > 0">
+    <div class="text-primary font-bold mb-2">{{ currentPhase }}</div>
+    <p-progressBar [value]="progress"></p-progressBar>
+  </div>
+
+  <!-- Terminal -->
+  <div class="terminal shadow-4 mb-4">
+    <div *ngFor="let line of logs">{{ line }}</div>
+    <div *ngIf="isRunning" class="blink">_</div>
+  </div>
+
+  <!-- Report Summary -->
+  <div *ngIf="showReport && report" class="mt-4">
+    <div class="flex align-items-center gap-3 mb-4">
+      <h3 class="m-0">Validation Report</h3>
+      <p-tag [value]="report.status" [severity]="getReportStatusSeverity(report.status)"></p-tag>
+    </div>
+
+    <!-- Summary Tags -->
+    <div class="flex gap-3 mb-4">
+      <p-tag [value]="'Passed: ' + report.summary.passed" severity="success"></p-tag>
+      <p-tag [value]="'Failed: ' + report.summary.failed" severity="danger"></p-tag>
+      <p-tag [value]="'Skipped: ' + report.summary.skipped" severity="secondary"></p-tag>
+      <p-tag [value]="'Total: ' + report.summary.totalChecks" severity="info"></p-tag>
+    </div>
+
+    <!-- Schema Validation -->
+    <p-fieldset legend="Schema Validation" [toggleable]="true" *ngIf="report.schemaValidation?.tables?.length > 0"
+                class="mb-3">
+      <p-table [value]="report.schemaValidation.tables" [paginator]="true" [rows]="10"
+               [tableStyle]="{'min-width': '50rem'}">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Oracle Table</th>
+            <th>PG Table</th>
+            <th>Exists</th>
+            <th>Columns</th>
+            <th>Primary Key</th>
+            <th>Foreign Keys</th>
+            <th>Indexes</th>
+            <th>Constraints</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-table>
+          <tr>
+            <td>{{ table.oracleTable }}</td>
+            <td>{{ table.postgresTable }}</td>
+            <td>
+              <p-tag [value]="table.exists ? 'YES' : 'NO'" [severity]="table.exists ? 'success' : 'danger'"></p-tag>
+            </td>
+            <td>
+              <span *ngIf="table.columns">
+                {{ getColumnPassCount(table.columns) }}/{{ table.columns.length }}
+              </span>
+              <span *ngIf="!table.columns">—</span>
+            </td>
+            <td>
+              <p-tag *ngIf="table.primaryKey" [value]="table.primaryKey.status"
+                     [severity]="getStatusSeverity(table.primaryKey.status)"></p-tag>
+              <span *ngIf="!table.primaryKey">—</span>
+            </td>
+            <td>
+              <span *ngIf="table.foreignKeys?.length > 0">
+                {{ getFKPassCount(table.foreignKeys) }}/{{ table.foreignKeys.length }}
+              </span>
+              <span *ngIf="!table.foreignKeys || table.foreignKeys.length === 0">—</span>
+            </td>
+            <td>
+              <span *ngIf="table.indexes?.length > 0">
+                {{ getIndexPassCount(table.indexes) }}/{{ table.indexes.length }}
+              </span>
+              <span *ngIf="!table.indexes || table.indexes.length === 0">—</span>
+            </td>
+            <td>
+              <span *ngIf="table.checkConstraints?.length > 0">
+                <p-tag [value]="table.checkConstraints[0].status"
+                       [severity]="getStatusSeverity(table.checkConstraints[0].status)"></p-tag>
+              </span>
+              <span *ngIf="!table.checkConstraints || table.checkConstraints.length === 0">—</span>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="8" class="text-center p-4">No schema validation results.</td></tr>
+        </ng-template>
+      </p-table>
+    </p-fieldset>
+
+    <!-- Sequences -->
+    <p-fieldset legend="Sequences" [toggleable]="true" *ngIf="report.schemaValidation?.sequences?.length > 0"
+                class="mb-3">
+      <p-table [value]="report.schemaValidation.sequences" [tableStyle]="{'min-width': '30rem'}">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Sequence Name</th>
+            <th>Status</th>
+            <th>In PostgreSQL</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-seq>
+          <tr>
+            <td>{{ seq.name }}</td>
+            <td><p-tag [value]="seq.status" [severity]="getStatusSeverity(seq.status)"></p-tag></td>
+            <td>{{ seq.postgresExists ? seq.postgresName : 'MISSING' }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-fieldset>
+
+    <!-- Data Validation -->
+    <p-fieldset legend="Data Validation" [toggleable]="true" *ngIf="report.dataValidation?.tables?.length > 0"
+                class="mb-3">
+      <p-table [value]="report.dataValidation.tables" [paginator]="true" [rows]="10"
+               [tableStyle]="{'min-width': '50rem'}">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Table</th>
+            <th>Oracle Rows</th>
+            <th>PG Rows</th>
+            <th>Row Count</th>
+            <th>Checksums</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-table>
+          <tr>
+            <td>{{ table.table }}</td>
+            <td>{{ table.rowCount?.oracleCount ?? '—' }}</td>
+            <td>{{ table.rowCount?.postgresCount ?? '—' }}</td>
+            <td>
+              <p-tag *ngIf="table.rowCount" [value]="table.rowCount.status"
+                     [severity]="getStatusSeverity(table.rowCount.status)"></p-tag>
+              <span *ngIf="!table.rowCount">—</span>
+            </td>
+            <td>
+              <span *ngIf="table.checksums?.length > 0">
+                {{ getChecksumPassCount(table.checksums) }}/{{ table.checksums.length }}
+              </span>
+              <span *ngIf="!table.checksums || table.checksums.length === 0">—</span>
+            </td>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="emptymessage">
+          <tr><td colspan="5" class="text-center p-4">No data validation results.</td></tr>
+        </ng-template>
+      </p-table>
+    </p-fieldset>
+
+    <!-- Errors -->
+    <p-fieldset legend="Errors" [toggleable]="true" *ngIf="report.errors?.length > 0" class="mb-3">
+      <p-table [value]="report.errors" [tableStyle]="{'min-width': '30rem'}">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>Table</th>
+            <th>Phase</th>
+            <th>Message</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-error>
+          <tr>
+            <td>{{ error.table }}</td>
+            <td>{{ error.phase }}</td>
+            <td class="text-red-500">{{ error.message }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </p-fieldset>
+  </div>
+</div>

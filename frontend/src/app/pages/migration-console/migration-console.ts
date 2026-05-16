@@ -66,9 +66,8 @@ export class MigrationConsole implements OnInit, OnDestroy {
       });
     });
 
-    this.eventSource.addEventListener('error', (event: MessageEvent) => {
+    this.eventSource.addEventListener('error', (_: MessageEvent) => {
       this.zone.run(() => {
-        this.logs.push(`\n--- ERROR: Check connection or logs ---`);
         this.isRunning = false;
         this.closeConnection();
       });
@@ -87,6 +86,10 @@ export class MigrationConsole implements OnInit, OnDestroy {
     }
     if (line.includes('>>> STEP 3')) {
       this.currentStep = 'Step 3: Migrating Data...';
+      this.progress = 0;
+    }
+    if (line.includes('>>> STEP 4')) {
+      this.currentStep = 'Step 4: Applying Foreign Key Constraints...';
       this.progress = 0;
     }
 

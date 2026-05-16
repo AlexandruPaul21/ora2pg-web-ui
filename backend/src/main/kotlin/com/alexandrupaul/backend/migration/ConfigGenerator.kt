@@ -46,6 +46,12 @@ class ConfigGenerator {
             TYPE          COPY
             OUTPUT_DIR    ${workDir.toAbsolutePath()}
             FILE_PER_FKEY 1
+            FKEY_DEFERRABLE 1
+            DROP_FKEY     1
+
+            # Error handling
+            STOP_ON_ERROR 0
+            LOG_ON_ERROR  1
 
             $tableFilterDirective
 

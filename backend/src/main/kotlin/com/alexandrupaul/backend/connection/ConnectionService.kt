@@ -7,7 +7,7 @@ import java.sql.DriverManager
 @Service
 class ConnectionService {
 
-    private fun buildOracleJdbcUrl(project: Project): String = when (project.oracleConnectionType) {
+    fun buildOracleJdbcUrl(project: Project): String = when (project.oracleConnectionType) {
         "SERVICE_NAME" -> "jdbc:oracle:thin:@//${project.oracleHost}:${project.oraclePort}/${project.oracleSid}"
         "CUSTOM" -> project.oracleCustomDsn ?: ""
         else -> "jdbc:oracle:thin:@${project.oracleHost}:${project.oraclePort}:${project.oracleSid}"
@@ -30,14 +30,16 @@ class ConnectionService {
         }
     }
 
-    fun testPostgresConnection(project: Project): ConnectionResult {
-        // Build the Postgres URL with SSL Mode
+    fun buildPostgresJdbcUrl(project: Project): String {
         var url = "jdbc:postgresql://${project.postgresHost}:${project.postgresPort}/${project.postgresDb}?sslmode=${project.postgresSslMode}"
-
-        // Append search path if the user provided one
         if (!project.postgresSearchPath.isNullOrBlank()) {
             url += "&currentSchema=${project.postgresSearchPath}"
         }
+        return url
+    }
+
+    fun testPostgresConnection(project: Project): ConnectionResult {
+        val url = buildPostgresJdbcUrl(project)
 
         return try {
             DriverManager.getConnection(url, project.postgresUser, project.postgresPassword).use { connection ->
@@ -50,6 +52,10 @@ class ConnectionService {
         } catch (e: Exception) {
             ConnectionResult(false, "Postgres Error: ${e.message}")
         }
+    }
+
+    fun getPostgresSchema(project: Project): String {
+        return if (!project.postgresSearchPath.isNullOrBlank()) project.postgresSearchPath!! else "public"
     }
 
     fun fetchOracleTables(project: Project): List<String> {

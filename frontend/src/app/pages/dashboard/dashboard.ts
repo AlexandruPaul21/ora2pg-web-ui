@@ -10,7 +10,7 @@ import { PasswordModule } from 'primeng/password';
 import { ToastModule } from 'primeng/toast';
 import { DividerModule } from 'primeng/divider';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import {ConfirmDialog} from 'primeng/confirmdialog';
 import {Tooltip} from 'primeng/tooltip';
 import {Textarea} from 'primeng/textarea';
@@ -21,6 +21,9 @@ import {DomSanitizer, SafeHtml} from '@angular/platform-browser';
 import {Tag} from 'primeng/tag';
 import {MultiSelect} from 'primeng/multiselect';
 import {SelectButton} from 'primeng/selectbutton';
+import {CheckboxModule} from 'primeng/checkbox';
+import {ContextMenu, ContextMenuModule} from 'primeng/contextmenu';
+import {MenuItem} from 'primeng/api';
 
 @Component({
   selector: 'app-dashboard',
@@ -45,6 +48,8 @@ import {SelectButton} from 'primeng/selectbutton';
     Tag,
     MultiSelect,
     SelectButton,
+    CheckboxModule,
+    ContextMenuModule,
   ],
   providers: [MessageService, ConfirmationService],
   templateUrl: './dashboard.html',
@@ -55,6 +60,7 @@ export class DashboardComponent implements OnInit {
   messageService = inject(MessageService);
   confirmationService = inject(ConfirmationService);
   sanitizer = inject(DomSanitizer);
+  router = inject(Router);
 
   oracleConnTypes = [
     { label: 'SID', value: 'SID' },
@@ -88,10 +94,62 @@ export class DashboardComponent implements OnInit {
     {label: 'Exclude (blacklist)', value: 'EXCLUDE'}
   ];
 
+  // Context menu
+  contextMenuItems: MenuItem[] = [];
+  selectedProject: Project | null = null;
+
+  // Validation
+  displayValidationDialog = false;
+  displayValidationHistoryDialog = false;
+  displayValidationReportDialog = false;
+  displayValidationLogDialog = false;
+  validationProject: Project | null = null;
+  validationHistoryRuns: any[] = [];
+  validationReport: any = null;
+  selectedValidationLogs = '';
+
+  schemaValidationOptions = [
+    { key: 'TABLES', label: 'Tables & Columns (structure + types)', selected: true },
+    { key: 'PKS', label: 'Primary Keys', selected: true },
+    { key: 'FKS', label: 'Foreign Keys', selected: true },
+    { key: 'INDEXES', label: 'Indexes', selected: true },
+    { key: 'SEQUENCES', label: 'Sequences', selected: true },
+    { key: 'CONSTRAINTS', label: 'Check Constraints', selected: true },
+    { key: 'DEFAULTS', label: 'Column Defaults', selected: false }
+  ];
+
+  dataValidationOptions = [
+    { key: 'ROW_COUNTS', label: 'Row Counts (per table)', selected: true },
+    { key: 'CHECKSUMS', label: 'Column Checksums (SUM/hash comparison)', selected: false }
+  ];
+
   newProject: Project = this.getEmptyProject();
 
   ngOnInit() {
     this.loadProjects();
+    this.contextMenuItems = [
+      {
+        label: 'Migration History',
+        icon: 'pi pi-history',
+        command: () => this.viewHistory(this.selectedProject!)
+      },
+      {
+        label: 'Validation History',
+        icon: 'pi pi-verified',
+        command: () => this.viewValidationHistory(this.selectedProject!)
+      },
+      { separator: true },
+      {
+        label: 'Edit',
+        icon: 'pi pi-pencil',
+        command: () => this.editProject(this.selectedProject!)
+      },
+      {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        command: () => this.deleteProject(this.selectedProject!)
+      }
+    ];
   }
 
   loadProjects() {
@@ -118,6 +176,7 @@ export class DashboardComponent implements OnInit {
   getStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined {
     switch (status) {
       case 'SUCCESS': return 'success';
+      case 'SUCCESS_WITH_WARNING': return 'warn';
       case 'FAILED': return 'danger';
       case 'RUNNING': return 'info';
       default: return 'secondary';
@@ -285,5 +344,67 @@ export class DashboardComponent implements OnInit {
         this.messageService.add({severity:'error', summary:'Fetch Failed', detail: 'Could not retrieve Oracle tables. Check connection details.'});
       }
     });
+  }
+
+  // --- Validation ---
+
+  openValidationDialog(project: Project) {
+    this.validationProject = project;
+    this.schemaValidationOptions.forEach(o => o.selected = o.key !== 'DEFAULTS');
+    this.dataValidationOptions.forEach(o => o.selected = o.key === 'ROW_COUNTS');
+    this.displayValidationDialog = true;
+  }
+
+  hasAnyValidationSelected(): boolean {
+    return [...this.schemaValidationOptions, ...this.dataValidationOptions].some(o => o.selected);
+  }
+
+  launchValidation() {
+    if (!this.validationProject?.id) return;
+    const scope = [
+      ...this.schemaValidationOptions.filter(o => o.selected).map(o => o.key),
+      ...this.dataValidationOptions.filter(o => o.selected).map(o => o.key)
+    ];
+    this.displayValidationDialog = false;
+    this.router.navigate(['/validation', this.validationProject.id], {
+      queryParams: { scope: scope.join(',') }
+    });
+  }
+
+  viewValidationHistory(project: Project) {
+    if (!project.id) return;
+    this.projectService.getValidationHistory(project.id).subscribe(runs => {
+      this.validationHistoryRuns = runs;
+      this.displayValidationHistoryDialog = true;
+    });
+  }
+
+  viewValidationLogs(runId: number) {
+    this.projectService.getValidationLogs(runId).subscribe(logs => {
+      this.selectedValidationLogs = logs;
+      this.displayValidationLogDialog = true;
+    });
+  }
+
+  viewValidationReport(runId: number) {
+    this.projectService.getValidationReport(runId).subscribe({
+      next: (report) => {
+        this.validationReport = report;
+        this.displayValidationReportDialog = true;
+      },
+      error: () => {
+        this.messageService.add({severity:'error', summary:'Error', detail:'Could not load validation report'});
+      }
+    });
+  }
+
+  getValidationStatusSeverity(status: string): 'success' | 'info' | 'warn' | 'danger' | 'secondary' | 'contrast' | undefined {
+    switch (status) {
+      case 'SUCCESS': return 'success';
+      case 'PARTIAL': return 'warn';
+      case 'FAILED': return 'danger';
+      case 'RUNNING': return 'info';
+      default: return 'secondary';
+    }
   }
 }

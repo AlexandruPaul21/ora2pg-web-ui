@@ -78,4 +78,16 @@ export class ProjectService {
   getMigrationLogs(runId: number): Observable<string> {
     return this.http.get(`${this.apiUrl}/../migration/history/logs/${runId}`, { responseType: 'text' });
   }
+
+  getValidationHistory(projectId: number): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/../validation/history/${projectId}`);
+  }
+
+  getValidationLogs(runId: number): Observable<string> {
+    return this.http.get(`${this.apiUrl}/../validation/history/logs/${runId}`, { responseType: 'text' });
+  }
+
+  getValidationReport(runId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/../validation/report/${runId}`);
+  }
 }
