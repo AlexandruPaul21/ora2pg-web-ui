@@ -1,6 +1,3 @@
-# ==========================================
-# STAGE 1: Build Frontend (Angular)
-# ==========================================
 FROM node:20-alpine AS frontend-build
 WORKDIR /app-frontend
 COPY frontend/package*.json ./
@@ -8,9 +5,6 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-# ==========================================
-# STAGE 2: Build Backend (Spring Boot)
-# ==========================================
 FROM gradle:9.3-jdk21 AS backend-build
 WORKDIR /app-backend
 # Copy source code
@@ -20,12 +14,8 @@ COPY backend/ ./
 COPY --from=frontend-build /app-frontend/dist/frontend/browser ./src/main/resources/static
 
 # Build the JAR
-# We add -x buildFrontend -x installFrontend to stop Gradle from looking for package.json
 RUN gradle bootJar -x test -x buildFrontend -x installFrontend --no-daemon
 
-# ==========================================
-# STAGE 3: Final Runtime Image
-# ==========================================
 FROM eclipse-temurin:21-jre-jammy
 
 RUN apt-get update && apt-get install -y \
@@ -69,7 +59,6 @@ RUN wget https://github.com/darold/ora2pg/archive/v${ORA2PG_VERSION}.tar.gz && \
     cd .. && \
     rm -rf ora2pg* v${ORA2PG_VERSION}.tar.gz
 
-# RUN
 WORKDIR /app
 COPY --from=backend-build /app-backend/build/libs/*.jar app.jar
 RUN mkdir -p /data/projects

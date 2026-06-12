@@ -25,7 +25,6 @@ class ConnectionService {
                 }
             }
         } catch (e: Exception) {
-            // Return the exception message safely to the frontend
             ConnectionResult(false, "Oracle Error: ${e.message}")
         }
     }

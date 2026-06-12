@@ -71,27 +71,26 @@ class MigrationService(
                         pb.redirectErrorStream(true)
                         val p = pb.start()
                         var sawError = false
-                        BufferedReader(InputStreamReader(p.inputStream)).use { reader ->
-                            var line: String?
-                            while (reader.readLine().also { line = it } != null) {
-                                logLine(line!!)
+
+                        p.inputStream.bufferedReader().use { reader ->
+                            reader.forEachLine { line ->
+                                logLine(line)
                                 if (line.contains("ERROR:")) sawError = true
                             }
                         }
+
                         p.waitFor()
                         return sawError
                     }
 
                     var hasErrors = false
 
-                    // >>> STEP 1: Schema Extraction (tables + sequences)
                     logLine("\n>>> STEP 1: Extracting Schema from Oracle...")
                     val schemaFileName = "schema_${project.id}.sql"
                     val sequenceFileName = "sequence_${project.id}.sql"
                     runOra2pg("TABLE", listOf("-o", schemaFileName, "-b", baseWorkDir.toString()))
                     runOra2pg("SEQUENCE", listOf("-o", sequenceFileName, "-b", baseWorkDir.toString()))
 
-                    // >>> STEP 2: Apply Schema to Postgres (psql continues past errors so independent tables survive)
                     logLine("\n>>> STEP 2: Creating Tables in PostgreSQL...")
                     val schemaFile = baseWorkDir.resolve(schemaFileName)
                     if (runPsql(schemaFile)) hasErrors = true
@@ -102,11 +101,9 @@ class MigrationService(
                         if (runPsql(sequenceFile)) hasErrors = true
                     }
 
-                    // >>> STEP 3: Migrate Data
                     logLine("\n>>> STEP 3: Migrating Data...")
                     val dataExitCode = runOra2pg("COPY")
 
-                    // >>> STEP 4: Apply Foreign Key Constraints
                     val fkeyFiles = Files.list(baseWorkDir)
                         .filter { val name = it.fileName.toString(); name.startsWith("CONSTRAINTS_") && name.endsWith(".sql") && name.contains("${project.id}") }
                         .collect(Collectors.toList())

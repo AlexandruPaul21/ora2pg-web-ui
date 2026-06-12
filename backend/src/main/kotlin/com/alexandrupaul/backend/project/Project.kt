@@ -30,7 +30,7 @@ data class Project(
     var postgresDb: String = "postgres",
     var postgresUser: String = "",
 
-    @Convert(converter = AttributeEncryptor::class) // <--- Encrypted!
+    @Convert(converter = AttributeEncryptor::class)
     @Column(name = "postgres_password")
     var postgresPassword: String = "",
 
@@ -45,4 +45,11 @@ data class Project(
 
     @Column(length = 2000)
     var ora2pgConfig: String = ""
-)
+) {
+    fun getTableList(): List<String> {
+        if (tableFilterMode.isNullOrBlank() || selectedTables.isBlank()) {
+            return emptyList()
+        }
+        return selectedTables.split(" ").filter { it.isNotBlank() }
+    }
+}

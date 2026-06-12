@@ -94,11 +94,9 @@ export class DashboardComponent implements OnInit {
     {label: 'Exclude (blacklist)', value: 'EXCLUDE'}
   ];
 
-  // Context menu
   contextMenuItems: MenuItem[] = [];
   selectedProject: Project | null = null;
 
-  // Validation
   displayValidationDialog = false;
   displayValidationHistoryDialog = false;
   displayValidationReportDialog = false;
@@ -114,8 +112,7 @@ export class DashboardComponent implements OnInit {
     { key: 'FKS', label: 'Foreign Keys', selected: true },
     { key: 'INDEXES', label: 'Indexes', selected: true },
     { key: 'SEQUENCES', label: 'Sequences', selected: true },
-    { key: 'CONSTRAINTS', label: 'Check Constraints', selected: true },
-    { key: 'DEFAULTS', label: 'Column Defaults', selected: false }
+    { key: 'CONSTRAINTS', label: 'Check Constraints', selected: true }
   ];
 
   dataValidationOptions = [
@@ -247,10 +244,8 @@ export class DashboardComponent implements OnInit {
     this.newProject.selectedTables = this.selectedTablesList.join(' ');
 
     if (this.isEditing && this.newProject.id) {
-      // Update existing project
       this.projectService.updateProject(this.newProject.id, this.newProject).subscribe({
         next: (proj) => {
-          // Find and update item in the list
           const index = this.projects.findIndex(p => p.id === proj.id);
           if (index !== -1) {
             this.projects[index] = proj;
@@ -263,7 +258,6 @@ export class DashboardComponent implements OnInit {
         }
       });
     } else {
-      // Create new project (existing logic)
       this.projectService.createProject(this.newProject).subscribe({
         next: (proj) => {
           this.projects.push(proj);
@@ -310,7 +304,6 @@ export class DashboardComponent implements OnInit {
         }
       },
       error: (err) => {
-        // This handles actual network errors (backend down, etc.)
         this.messageService.add({severity:'error', summary:'System Error', detail: 'Could not reach server'});
       }
     });
@@ -346,7 +339,6 @@ export class DashboardComponent implements OnInit {
     });
   }
 
-  // --- Validation ---
 
   openValidationDialog(project: Project) {
     this.validationProject = project;

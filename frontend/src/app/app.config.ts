@@ -11,19 +11,18 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideHttpClient(withFetch()),
 
-    // 2. Enable PrimeNG with the Aura Theme
     providePrimeNG({
       theme: {
         preset: Aura,
         options: {
-          darkModeSelector: '.my-app-dark', // Custom selector or 'none' to force light
+          darkModeSelector: '.my-app-dark',
           cssLayer: {
             name: 'primeng',
             order: 'tailwind-base, primeng, tailwind-utilities'
           }
         }
       },
-      ripple: true // Enable ripple effect on buttons
+      ripple: true
     })
   ]
 };

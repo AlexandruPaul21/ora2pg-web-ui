@@ -1,0 +1,26 @@
+package com.alexandrupaul.backend.validation
+
+val TYPE_COMPATIBILITY = mapOf(
+    "NUMBER" to setOf("smallint", "integer", "bigint", "numeric", "decimal", "double precision", "real",
+        "int2", "int4", "int8", "float4", "float8"),
+    "FLOAT" to setOf("double precision", "real", "numeric", "float4", "float8"),
+    "BINARY_FLOAT" to setOf("real", "double precision", "float4", "float8"),
+    "BINARY_DOUBLE" to setOf("double precision", "float8"),
+    "VARCHAR2" to setOf("character varying", "varchar", "text"),
+    "NVARCHAR2" to setOf("character varying", "varchar", "text"),
+    "CHAR" to setOf("character", "char", "character varying", "varchar", "bpchar"),
+    "NCHAR" to setOf("character", "char", "character varying", "varchar", "bpchar"),
+    "CLOB" to setOf("text"),
+    "NCLOB" to setOf("text"),
+    "BLOB" to setOf("bytea"),
+    "RAW" to setOf("bytea"),
+    "LONG" to setOf("text"),
+    "LONG RAW" to setOf("bytea"),
+    "DATE" to setOf("timestamp without time zone", "timestamp", "date"),
+    "TIMESTAMP" to setOf("timestamp without time zone", "timestamp"),
+    "TIMESTAMP(6)" to setOf("timestamp without time zone", "timestamp"),
+    "TIMESTAMP WITH TIME ZONE" to setOf("timestamp with time zone", "timestamptz"),
+    "INTERVAL YEAR TO MONTH" to setOf("interval"),
+    "INTERVAL DAY TO SECOND" to setOf("interval"),
+    "XMLTYPE" to setOf("xml"),
+)

@@ -9,6 +9,7 @@ import java.nio.file.StandardOpenOption
 @Component
 class ConfigGenerator {
 
+    // [DOC] https://ora2pg.darold.net/docs/configuration
     fun createConfig(project: Project, workDir: Path, includeTableFilter: Boolean = true): Path {
         val suffix = if (includeTableFilter) "" else "_report"
         val configFile = workDir.resolve("ora2pg_${project.id}${suffix}.conf")
@@ -41,7 +42,6 @@ class ConfigGenerator {
             PG_PWD        ${project.postgresPassword}
             $pgSchemaDirective
 
-            # Auto-generated settings
             PG_VERSION    16
             TYPE          COPY
             OUTPUT_DIR    ${workDir.toAbsolutePath()}

@@ -1,7 +1,5 @@
 services:
-  # -------------------------------------------------------
-  # 1. Your Application (Backend + Frontend + Ora2Pg)
-  # -------------------------------------------------------
+
   app:
     build: .
     container_name: ora2pg-app
@@ -17,9 +15,6 @@ services:
     networks:
       - migration-net
 
-  # -------------------------------------------------------
-  # 2. Source Database: Oracle XE (Lightweight version)
-  # -------------------------------------------------------
   oracle:
     image: gvenzl/oracle-xe:21-slim-faststart
     container_name: oracle-source
@@ -40,9 +35,6 @@ services:
       retries: 10
       start_period: 20s
 
-  # -------------------------------------------------------
-  # 3. Destination Database: PostgreSQL 16
-  # -------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: postgres-dest

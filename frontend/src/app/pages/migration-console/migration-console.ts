@@ -25,7 +25,7 @@ import { ProgressBarModule } from 'primeng/progressbar';
 export class MigrationConsole implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private zone = inject(NgZone);
-  private cdr = inject(ChangeDetectorRef); // Manually trigger updates
+  private cdr = inject(ChangeDetectorRef);
 
   projectId: number = 0;
   logs: string[] = [];
@@ -43,7 +43,6 @@ export class MigrationConsole implements OnInit, OnDestroy {
     this.isRunning = true;
     this.progress = 0;
 
-    // Connect to SSE Endpoint
     this.eventSource = new EventSource(`http://localhost:8080/api/migration/run/${this.projectId}`);
 
     this.eventSource.addEventListener('log', (event: MessageEvent) => {
@@ -53,7 +52,6 @@ export class MigrationConsole implements OnInit, OnDestroy {
         this.parseProgress(line);
         this.cdr.detectChanges(); // Force update
 
-        // Auto-scroll to bottom
         setTimeout(() => this.scrollToBottom(), 50);
       });
     });
@@ -75,14 +73,13 @@ export class MigrationConsole implements OnInit, OnDestroy {
   }
 
   parseProgress(line: string) {
-    // Detect which step we are on and reset the bar if needed
     if (line.includes('>>> STEP 1')) {
       this.currentStep = 'Step 1: Extracting Schema...';
       this.progress = 0;
     }
     if (line.includes('>>> STEP 2')) {
       this.currentStep = 'Step 2: Creating Tables in PostgreSQL...';
-      this.progress = 0; // psql doesn't output percentages, so we hold at 0
+      this.progress = 0;
     }
     if (line.includes('>>> STEP 3')) {
       this.currentStep = 'Step 3: Migrating Data...';
@@ -93,11 +90,9 @@ export class MigrationConsole implements OnInit, OnDestroy {
       this.progress = 0;
     }
 
-    // Extract the percentage and update the bar
     const match = line.match(/(\d+\.\d+)%/);
     if (match) {
       let val = parseFloat(match[1]);
-      // Clamp the value to 100 to prevent the Oracle stats bug from breaking the UI
       if (val > 100) val = 100;
       this.progress = val;
     }

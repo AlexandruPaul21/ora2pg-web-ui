@@ -4,26 +4,22 @@
     <p-button label="Back to Dashboard" icon="pi pi-arrow-left" routerLink="/" styleClass="p-button-text"></p-button>
   </div>
 
-  <!-- Progress -->
   <div class="mb-3" *ngIf="isRunning || progress > 0">
     <div class="text-primary font-bold mb-2">{{ currentPhase }}</div>
     <p-progressBar [value]="progress"></p-progressBar>
   </div>
 
-  <!-- Terminal -->
   <div class="terminal shadow-4 mb-4">
     <div *ngFor="let line of logs">{{ line }}</div>
     <div *ngIf="isRunning" class="blink">_</div>
   </div>
 
-  <!-- Report Summary -->
   <div *ngIf="showReport && report" class="mt-4">
     <div class="flex align-items-center gap-3 mb-4">
       <h3 class="m-0">Validation Report</h3>
       <p-tag [value]="report.status" [severity]="getReportStatusSeverity(report.status)"></p-tag>
     </div>
 
-    <!-- Summary Tags -->
     <div class="flex gap-3 mb-4">
       <p-tag [value]="'Passed: ' + report.summary.passed" severity="success"></p-tag>
       <p-tag [value]="'Failed: ' + report.summary.failed" severity="danger"></p-tag>
@@ -31,7 +27,6 @@
       <p-tag [value]="'Total: ' + report.summary.totalChecks" severity="info"></p-tag>
     </div>
 
-    <!-- Schema Validation -->
     <p-fieldset legend="Schema Validation" [toggleable]="true" *ngIf="report.schemaValidation?.tables?.length > 0"
                 class="mb-3">
       <p-table [value]="report.schemaValidation.tables" [paginator]="true" [rows]="10"
@@ -93,7 +88,6 @@
       </p-table>
     </p-fieldset>
 
-    <!-- Sequences -->
     <p-fieldset legend="Sequences" [toggleable]="true" *ngIf="report.schemaValidation?.sequences?.length > 0"
                 class="mb-3">
       <p-table [value]="report.schemaValidation.sequences" [tableStyle]="{'min-width': '30rem'}">
@@ -114,7 +108,6 @@
       </p-table>
     </p-fieldset>
 
-    <!-- Data Validation -->
     <p-fieldset legend="Data Validation" [toggleable]="true" *ngIf="report.dataValidation?.tables?.length > 0"
                 class="mb-3">
       <p-table [value]="report.dataValidation.tables" [paginator]="true" [rows]="10"
@@ -152,7 +145,6 @@
       </p-table>
     </p-fieldset>
 
-    <!-- Errors -->
     <p-fieldset legend="Errors" [toggleable]="true" *ngIf="report.errors?.length > 0" class="mb-3">
       <p-table [value]="report.errors" [tableStyle]="{'min-width': '30rem'}">
         <ng-template pTemplate="header">
